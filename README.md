@@ -1,5 +1,9 @@
 # exifcalibur
 
+<p align="center">
+  <img src="banner.png" alt="exifcalibur — a golden sword piercing a stack of photo frames, surrounded by camera, location, face and search tag icons" width="100%">
+</p>
+
 Enrich image metadata (description, keywords, people) with any OpenAI-compatible vision model.
 
 exifcalibur sends your photos to a vision endpoint and writes the results straight into the image files using [exiftool](https://exiftool.org):
