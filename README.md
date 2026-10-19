@@ -1,10 +1,14 @@
+<div align="center">
+
 # exifcalibur
 
 <p align="center">
   <img src="banner.png" alt="exifcalibur — a golden sword piercing a stack of photo frames, surrounded by camera, location, face and search tag icons" width="100%">
 </p>
 
-Enrich image metadata (description, keywords, people) with any OpenAI-compatible vision model.
+**Enrich image metadata (description, keywords, people) with any OpenAI-compatible vision model.**
+
+</div>
 
 exifcalibur sends your photos to a vision endpoint and writes the results straight into the image files using [exiftool](https://exiftool.org):
 
@@ -20,6 +24,8 @@ The written metadata is standard XMP/IPTC, so any library manager (digiKam, Ligh
 
 JPEG, PNG, WebP and TIFF. HEIC/HEIF is **experimental**: exiftool can write metadata into it, and on macOS the payload sent to the model is converted to JPEG automatically (on other platforms the raw HEIC is sent, if the endpoint accepts it).
 
+Files larger than 10 MiB are downscaled to ≤2048 px JPEG for the API call only; HEIC and TIFF payloads are converted to JPEG when a converter (`sips` on macOS, ImageMagick elsewhere) is available. The original file is never modified.
+
 ## Requirements
 
 - Python 3.10+ (macOS, Linux or Windows WSL)
@@ -27,6 +33,13 @@ JPEG, PNG, WebP and TIFF. HEIC/HEIF is **experimental**: exiftool can write meta
 - An API key for any OpenAI-compatible vision endpoint
 
 ## Usage
+
+Get the script and run from the repository directory:
+
+```bash
+git clone https://github.com/alisio/exifcalibur
+cd exifcalibur
+```
 
 ```bash
 # one file or many
@@ -46,7 +59,15 @@ python3 exifcalibur.py --dry-run --merge ~/Pictures/2023
 python3 exifcalibur.py --workers 4 --report report.json ~/Pictures/2023
 ```
 
-Exit code is `0` when nothing failed, `1` when at least one file failed. Individual failures never stop the batch.
+A successful run prints one line per file plus a final summary:
+
+```
+[written] photo.jpg - description=yes
+Summary: 1 file(s) - 1 written
+Model: minimax/minimax-m3.1-flash:free (lang=en, endpoint=https://openrouter.ai/api/v1)
+```
+
+Exit code is `0` when nothing failed, `1` when at least one file failed — it is also `1` when the selection is empty ("Nothing to do"). Individual failures never stop the batch.
 
 ### Options
 
@@ -79,11 +100,13 @@ The `.env` file is read from the working directory (plain `KEY=VALUE` lines); co
 cp .env.example .env   # then edit .env
 ```
 
-Example pointing to a local server:
+Example pointing to a local server (Ollama, LM Studio…):
 
 ```bash
-python3 exifcalibur.py --base-url http://localhost:11434/v1 --model qwen3-vl:32b ~/Pictures
+python3 exifcalibur.py --base-url http://localhost:11434/v1 --model qwen3-vl:32b --api-key dummy ~/Pictures
 ```
+
+Local servers usually ignore the key — any non-empty value satisfies the check.
 
 ## Overwrite vs merge
 
