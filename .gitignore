@@ -1,0 +1,14 @@
+# secrets
+.env
+
+# python
+__pycache__/
+*.pyc
+
+# generated reports
+*.report.json
+report.json
+
+# os
+.DS_Store
+Thumbs.db
