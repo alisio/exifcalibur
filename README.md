@@ -54,7 +54,7 @@ Exit code is `0` when nothing failed, `1` when at least one file failed. Individ
 |------|---------|
 | `--api-key KEY` | API key |
 | `--base-url URL` | OpenAI-compatible base URL (default: `https://openrouter.ai/api/v1`) |
-| `--model NAME` | vision model (default: `qwen/qwen3-vl-235b-a22b-instruct`) |
+| `--model NAME` | vision model (default: `minimax/minimax-m3.1-flash:free`) |
 | `--lang CODE` | language of the written metadata (default: `en`; e.g. `pt-BR`, `es`) |
 | `--workers N` | parallel API calls (default: 1) |
 | `--merge` | fill only empty fields instead of overwriting |
@@ -69,7 +69,7 @@ Precedence, highest first: **CLI flags → environment variables → `.env` file
 |----------|---------|
 | `API_KEY` | (none, required) |
 | `BASE_URL` | `https://openrouter.ai/api/v1` |
-| `MODEL` | `qwen/qwen3-vl-235b-a22b-instruct` |
+| `MODEL` | `minimax/minimax-m3.1-flash:free` (free tier; rate-limited — retry later on 429) |
 | `LANG` | `en` |
 | `WORKERS` | `1` |
 

@@ -34,7 +34,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_MODEL = "qwen/qwen3-vl-235b-a22b-instruct"
+DEFAULT_MODEL = "minimax/minimax-m3.1-flash:free"
 DEFAULT_LANG = "en"
 
 IMAGE_EXTENSIONS = {
@@ -241,30 +241,46 @@ def write_metadata(
 # Vision model
 # --------------------------------------------------------------------------
 
+# Upstream vision providers commonly reject media above ~10 MiB (e.g. MiniMax
+# returns 400 "media exceeds size limit"). Larger photos are downscaled for the
+# API payload only — the original file is never modified.
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+DOWNSCALE_MAX_DIM = 2048
+
+
+def convert_to_jpeg(path: Path, out: Path, max_dim: int):
+    """Best-effort conversion/downscale to JPEG with platform tools."""
+    if sys.platform == "darwin" and shutil.which("sips"):
+        return subprocess.run(
+            ["sips", "-Z", str(max_dim), "-s", "format", "jpeg", "-s", "formatOptions", "85",
+             str(path), "--out", str(out)],
+            capture_output=True, text=True, check=False,
+        )
+    magick = shutil.which("magick") or shutil.which("convert")
+    if magick:
+        return subprocess.run(
+            [magick, str(path), "-resize", f"{max_dim}x{max_dim}>", "-quality", "85", str(out)],
+            capture_output=True, text=True, check=False,
+        )
+    return None
+
+
 def image_payload(path: Path) -> tuple[str, bytes]:
     """Return (mime, image bytes) suitable for sending to the vision API."""
     mime = IMAGE_EXTENSIONS.get(path.suffix.lower(), "application/octet-stream")
     data = path.read_bytes()
-    if mime == "image/heic" and sys.platform == "darwin" and shutil.which("sips"):
-        # Many OpenAI-compatible endpoints accept only common formats; HEIC
-        # is converted to JPEG when the platform converter is available.
+    needs_jpeg = mime in ("image/heic", "image/tiff")
+    too_big = len(data) > MAX_UPLOAD_BYTES
+    if needs_jpeg or too_big:
+        proc = None
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp) / "converted.jpg"
-            proc = subprocess.run(
-                ["sips", "-s", "format", "jpeg", str(path), "--out", str(out)],
-                capture_output=True, text=True, check=False,
-            )
-            if proc.returncode == 0 and out.is_file():
+            proc = convert_to_jpeg(path, out, DOWNSCALE_MAX_DIM if too_big else 100000)
+            if proc is not None and proc.returncode == 0 and out.is_file():
                 return "image/jpeg", out.read_bytes()
-    if mime == "image/tiff" and sys.platform == "darwin" and shutil.which("sips"):
-        with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp) / "converted.jpg"
-            proc = subprocess.run(
-                ["sips", "-s", "format", "jpeg", str(path), "--out", str(out)],
-                capture_output=True, text=True, check=False,
-            )
-            if proc.returncode == 0 and out.is_file():
-                return "image/jpeg", out.read_bytes()
+        if too_big and proc is None:
+            print(f"warning: {path.name} exceeds the upload size limit and no sips/magick "
+                  "was found to downscale it; sending as-is", file=sys.stderr)
     return mime, data
 
 
@@ -311,7 +327,7 @@ def analyze_image(path: Path, cfg: Config) -> dict[str, Any]:
                 ],
             }
         ],
-        "max_tokens": 500,
+        "max_tokens": 1000,
         "temperature": 0.2,
     }
     request = Request(
@@ -335,10 +351,14 @@ def analyze_image(path: Path, cfg: Config) -> dict[str, Any]:
     except (URLError, TimeoutError) as exc:
         raise RuntimeError(f"API request failed: {exc}") from exc
     try:
-        content = payload["choices"][0]["message"]["content"]
+        message = payload["choices"][0]["message"]
     except (KeyError, IndexError, TypeError) as exc:
         raise RuntimeError(f"unexpected API response: {json.dumps(payload)[:300]}") from exc
-    return extract_json(content)
+    content = message.get("content") or ""
+    if not str(content).strip():
+        hint = " (reasoning-only response; try a different, non-reasoning model)" if message.get("reasoning") else ""
+        raise RuntimeError(f"model returned empty content{hint}")
+    return extract_json(str(content))
 
 
 def normalize_analysis(proposal: dict[str, Any], cfg: Config) -> tuple[str, list[str], list[str]]:
