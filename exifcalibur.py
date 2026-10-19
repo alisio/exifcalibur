@@ -320,6 +320,9 @@ def analyze_image(path: Path, cfg: Config) -> dict[str, Any]:
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {cfg.api_key}",
+            # Cloudflare-based endpoints (e.g. OpenCode Zen) block the default
+            # Python-urllib User-Agent with HTTP 403 (error 1010).
+            "User-Agent": "exifcalibur/1.0 (metadata enrichment script)",
         },
         method="POST",
     )
