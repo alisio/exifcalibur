@@ -348,7 +348,9 @@ def normalize_analysis(proposal: dict[str, Any], cfg: Config) -> tuple[str, list
     seen: set[str] = set()
     keywords = [k for k in keywords if not (k in seen or seen.add(k))][:15]
     raw_people = proposal.get("people", [])
-    people = [str(p).strip() for p in raw_people if str(p).strip()][:10]
+    people_values = [str(p).strip() for p in raw_people if str(p).strip()]
+    seen_people: set[str] = set()
+    people = [p for p in people_values if not (p in seen_people or seen_people.add(p))][:10]
     return description, keywords, people
 
 
