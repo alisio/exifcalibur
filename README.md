@@ -70,7 +70,7 @@ Precedence, highest first: **CLI flags → environment variables → `.env` file
 | `API_KEY` | (none, required) |
 | `BASE_URL` | `https://openrouter.ai/api/v1` |
 | `MODEL` | `minimax/minimax-m3.1-flash:free` (free tier; rate-limited — retry later on 429) |
-| `LANG` | `en` |
+| `EXIFCALIBUR_LANG` | `en` |
 | `WORKERS` | `1` |
 
 The `.env` file is read from the working directory (plain `KEY=VALUE` lines); copy `.env.example` as a starting point:

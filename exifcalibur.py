@@ -141,7 +141,7 @@ def resolve_config(args: argparse.Namespace) -> Config:
         api_key=str(api_key),
         base_url=str(pick("BASE_URL", args.base_url, DEFAULT_BASE_URL)).rstrip("/"),
         model=str(pick("MODEL", args.model, DEFAULT_MODEL)),
-        lang=str(pick("LANG", args.lang, DEFAULT_LANG)),
+        lang=str(pick("EXIFCALIBUR_LANG", args.lang, DEFAULT_LANG)),
         merge=args.merge,
         dry_run=args.dry_run,
         workers=max(1, workers),
@@ -426,12 +426,14 @@ def process_file(path: Path, cfg: Config) -> Result:
         return result
 
 
-def print_summary(results: list[Result]) -> None:
+def print_summary(results: list[Result], cfg: Config) -> None:
     counts: dict[str, int] = {}
     for r in results:
         counts[r.status] = counts.get(r.status, 0) + 1
     parts = [f"{count} {status}" for status, count in sorted(counts.items())]
+    endpoint = cfg.base_url.rstrip("/")
     print(f"\nSummary: {len(results)} file(s) - {', '.join(parts) or 'none'}")
+    print(f"Model: {cfg.model} (lang={cfg.lang}, endpoint={endpoint})")
 
 
 def report_data(results: list[Result]) -> dict[str, Any]:
@@ -453,7 +455,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="exifcalibur",
         description="Enrich image metadata (description, keywords, people) with an OpenAI-compatible vision model.",
-        epilog="Configuration precedence: CLI flags > environment variables (API_KEY, BASE_URL, MODEL, LANG) > .env file > defaults.",
+        epilog="Configuration precedence: CLI flags > environment variables (API_KEY, BASE_URL, MODEL, EXIFCALIBUR_LANG) > .env file > defaults.",
     )
     parser.add_argument("paths", nargs="+", metavar="PATH", help="image files and/or folders (recursive)")
     parser.add_argument("--api-key", help="API key (otherwise API_KEY env or .env)")
@@ -497,7 +499,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[{result.status}] {result.path} - {status_line}")
         results.sort(key=lambda r: r.path)
 
-    print_summary(results)
+    print_summary(results, cfg)
     if cfg.report_path:
         try:
             cfg.report_path.write_text(
